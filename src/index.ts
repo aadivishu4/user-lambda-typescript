@@ -3,7 +3,8 @@ import type {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 
-import { getDb } from "./database/postgres.js";
+import { userRoutes } from "./routes/user.routes.js";
+import { response } from "./utils/response.js";
 
 export const handler = async (
   event: APIGatewayProxyEventV2,
@@ -18,40 +19,26 @@ export const handler = async (
   );
 
   try {
-    const db = await getDb();
-
-    const result = await db.query<{
-      current_time: Date;
-      postgres_version: string;
-    }>(`
-      SELECT
-        NOW() AS current_time,
-        version() AS postgres_version
-    `);
-
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        success: true,
-        message: "TypeScript Lambda connected to PostgreSQL",
-        database: result.rows[0],
-      }),
-    };
-  } catch (error) {
+    return await userRoutes(event);
+  } catch (error: unknown) {
     console.error("Application error:", error);
 
-    return {
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    // PostgreSQL unique constraint violation
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "23505"
+    ) {
+      return response(409, {
         success: false,
-        message: "Internal server error",
-      }),
-    };
+        message: "Email already exists",
+      });
+    }
+
+    return response(500, {
+      success: false,
+      message: "Internal server error",
+    });
   }
 };

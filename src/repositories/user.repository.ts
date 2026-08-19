@@ -1,12 +1,8 @@
 import { getDb } from "../database/postgres.js";
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  created_at: Date;
-  updated_at: Date;
-}
+import type {
+  User,
+  CreateUserInput,
+} from "../types/user.types.js";
 
 export async function findAllUsers(): Promise<User[]> {
   const db = await getDb();
@@ -26,14 +22,16 @@ export async function findAllUsers(): Promise<User[]> {
 }
 
 export async function createUser(
-  name: string,
-  email: string,
+  input: CreateUserInput,
 ): Promise<User> {
   const db = await getDb();
 
   const result = await db.query<User>(
     `
-      INSERT INTO users (name, email)
+      INSERT INTO users (
+        name,
+        email
+      )
       VALUES ($1, $2)
       RETURNING
         id,
@@ -42,7 +40,7 @@ export async function createUser(
         created_at,
         updated_at
     `,
-    [name, email],
+    [input.name, input.email],
   );
 
   return result.rows[0];
