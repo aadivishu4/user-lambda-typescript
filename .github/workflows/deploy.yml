@@ -27,8 +27,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      # 3. Install dependencies including dev dependencies
-      # TypeScript is needed during build
+      # 3. Install all dependencies
       - name: Install dependencies
         run: npm ci
 
@@ -40,13 +39,13 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      # 6. Create clean Lambda deployment package
+      # 6. Create Lambda deployment package
       - name: Prepare Lambda package
         run: |
           rm -rf lambda-package
           rm -f lambda.zip
 
-          mkdir lambda-package
+          mkdir -p lambda-package
 
           # Copy compiled JavaScript
           cp -R dist/* lambda-package/
@@ -55,14 +54,17 @@ jobs:
           cp package.json lambda-package/
           cp package-lock.json lambda-package/
 
-          # Install production dependencies only
+          # Install only production dependencies
           cd lambda-package
           npm ci --omit=dev
 
           # Create deployment ZIP
-          zip -r ../lambda.zip .
+          zip -rq ../lambda.zip .
 
           cd ..
+
+          echo "Lambda package created:"
+          ls -lh lambda.zip
 
       # 7. Authenticate GitHub → AWS using OIDC
       - name: Configure AWS credentials
@@ -70,23 +72,37 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::870766663926:role/CustomDeployUserLambdaPolicy
           aws-region: ap-south-1
+          role-session-name: github-user-lambda-deploy
 
-      # 8. Deploy new code to existing Lambda
+      # 8. Verify AWS authentication
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      # 9. Deploy new code to Lambda
       - name: Deploy Lambda
         run: |
           aws lambda update-function-code \
             --function-name user-lambda \
-            --zip-file fileb://lambda.zip
+            --zip-file fileb://lambda.zip \
+            --region ap-south-1
 
-      # 9. Wait until Lambda finishes updating
+      # 10. Wait until Lambda finishes updating
       - name: Wait for Lambda update
         run: |
           aws lambda wait function-updated \
-            --function-name user-lambda
+            --function-name user-lambda \
+            --region ap-south-1
 
-      # 10. Verify deployed Lambda
+      # 11. Verify deployment status
       - name: Verify Lambda deployment
         run: |
           aws lambda get-function-configuration \
             --function-name user-lambda \
-            --query '{FunctionName:FunctionName,Runtime:Runtime,LastModified:LastModified,State:State,LastUpdateStatus:LastUpdateStatus}'
+            --region ap-south-1 \
+            --query '{
+              FunctionName:FunctionName,
+              Runtime:Runtime,
+              LastModified:LastModified,
+              State:State,
+              LastUpdateStatus:LastUpdateStatus
+            }'
