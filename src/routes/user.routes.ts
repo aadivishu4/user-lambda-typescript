@@ -7,6 +7,8 @@ import {
   getUsersController,
   getUserByIdController,
   createUserController,
+  updateUserController,
+  deleteUserController,
 } from "../controllers/user.controller.js";
 
 import { response } from "../utils/response.js";
@@ -29,6 +31,14 @@ export async function userRoutes(
 
   if (method === "GET" && userByIdMatch) {
     return getUserByIdController(userByIdMatch[1]);
+  }
+
+  if (method === "PATCH" && userByIdMatch) {
+    return updateUserController(event, userByIdMatch[1]);
+  }
+
+  if (method === "DELETE" && userByIdMatch) {
+    return deleteUserController(userByIdMatch[1]);
   }
 
   return response(404, {
