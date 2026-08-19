@@ -8,6 +8,7 @@ import {
   addUser,
 } from "../services/user.service.js";
 
+import { createUserSchema } from "../validators/user.validator.js";
 import { response } from "../utils/response.js";
 
 export async function getUsersController(): Promise<APIGatewayProxyResultV2> {
@@ -33,24 +34,20 @@ export async function createUserController(
     });
   }
 
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("name" in body) ||
-    !("email" in body) ||
-    typeof body.name !== "string" ||
-    typeof body.email !== "string"
-  ) {
+  const validation = createUserSchema.safeParse(body);
+
+  if (!validation.success) {
     return response(400, {
       success: false,
-      message: "name and email are required",
+      message: "Validation failed",
+      errors: validation.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      })),
     });
   }
 
-  const user = await addUser({
-    name: body.name,
-    email: body.email,
-  });
+  const user = await addUser(validation.data);
 
   return response(201, {
     success: true,
