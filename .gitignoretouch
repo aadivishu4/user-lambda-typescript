@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# TypeScript build
+dist/
+
+# Lambda packaging
+lambda-package/
+*.zip
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
