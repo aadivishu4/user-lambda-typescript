@@ -5,6 +5,7 @@ on:
     branches:
       - main
 
+# Required for GitHub OIDC authentication with AWS
 permissions:
   contents: read
   id-token: write
@@ -15,43 +16,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Get source code
+      # 1. Checkout source code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Install Node
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
-      # 3. Install all dependencies
+      # 3. Install dependencies including dev dependencies
+      # TypeScript is needed during build
       - name: Install dependencies
         run: npm ci
 
-      # 4. TypeScript validation
+      # 4. Validate TypeScript
       - name: TypeScript type check
         run: npm run typecheck
 
-      # 5. Compile TypeScript
+      # 5. Compile TypeScript → dist/
       - name: Build TypeScript
         run: npm run build
 
-      # 6. Prepare Lambda deployment package
+      # 6. Create clean Lambda deployment package
       - name: Prepare Lambda package
         run: |
+          rm -rf lambda-package
+          rm -f lambda.zip
+
           mkdir lambda-package
 
+          # Copy compiled JavaScript
           cp -R dist/* lambda-package/
+
+          # Copy package files
           cp package.json lambda-package/
           cp package-lock.json lambda-package/
 
+          # Install production dependencies only
           cd lambda-package
-
           npm ci --omit=dev
 
+          # Create deployment ZIP
           zip -r ../lambda.zip .
+
+          cd ..
 
       # 7. Authenticate GitHub → AWS using OIDC
       - name: Configure AWS credentials
@@ -60,9 +71,22 @@ jobs:
           role-to-assume: arn:aws:iam::870766663926:role/GitHubActionsUserLambdaDeployRole
           aws-region: ap-south-1
 
-      # 8. Deploy code to Lambda
+      # 8. Deploy new code to existing Lambda
       - name: Deploy Lambda
         run: |
           aws lambda update-function-code \
             --function-name user-lambda \
             --zip-file fileb://lambda.zip
+
+      # 9. Wait until Lambda finishes updating
+      - name: Wait for Lambda update
+        run: |
+          aws lambda wait function-updated \
+            --function-name user-lambda
+
+      # 10. Verify deployed Lambda
+      - name: Verify Lambda deployment
+        run: |
+          aws lambda get-function-configuration \
+            --function-name user-lambda \
+            --query '{FunctionName:FunctionName,Runtime:Runtime,LastModified:LastModified,State:State,LastUpdateStatus:LastUpdateStatus}'
