@@ -68,7 +68,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: arn:aws:iam::870766663926:role/GitHubActionsUserLambdaDeployRole
+          role-to-assume: arn:aws:iam::870766663926:role/CustomDeployUserLambdaPolicy
           aws-region: ap-south-1
 
       # 8. Deploy new code to existing Lambda
