@@ -5,6 +5,7 @@ import type {
 
 import {
   getUsersController,
+  getUserByIdController,
   createUserController,
 } from "../controllers/user.controller.js";
 
@@ -22,6 +23,12 @@ export async function userRoutes(
 
   if (method === "POST" && path === "/users") {
     return createUserController(event);
+  }
+
+  const userByIdMatch = path.match(/^\/users\/([^/]+)$/);
+
+  if (method === "GET" && userByIdMatch) {
+    return getUserByIdController(userByIdMatch[1]);
   }
 
   return response(404, {

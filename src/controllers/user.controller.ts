@@ -5,6 +5,7 @@ import type {
 
 import {
   getUsers,
+  getUserById,
   addUser,
 } from "../services/user.service.js";
 
@@ -17,6 +18,24 @@ export async function getUsersController(): Promise<APIGatewayProxyResultV2> {
   return response(200, {
     success: true,
     data: users,
+  });
+}
+
+export async function getUserByIdController(
+  id: string,
+): Promise<APIGatewayProxyResultV2> {
+  const user = await getUserById(id);
+
+  if (!user) {
+    return response(404, {
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  return response(200, {
+    success: true,
+    data: user,
   });
 }
 
