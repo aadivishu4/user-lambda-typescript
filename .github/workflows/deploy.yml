@@ -47,18 +47,36 @@ jobs:
 
           mkdir -p lambda-package
 
-          # Copy compiled JavaScript
+          # Copy compiled application code
           cp -R dist/* lambda-package/
 
-          # Copy package files
+          # Copy package metadata
           cp package.json lambda-package/
           cp package-lock.json lambda-package/
 
-          # Install only production dependencies
           cd lambda-package
+
+          # Install only production dependencies
           npm ci --omit=dev
 
-          # Create deployment ZIP
+          # pg and zod are provided by Lambda Layer
+          rm -rf node_modules/pg
+          rm -rf node_modules/zod
+
+          # Verify they are NOT inside Lambda package
+          if [ -d "node_modules/pg" ]; then
+            echo "ERROR: pg is still present in Lambda package"
+            exit 1
+          fi
+
+          if [ -d "node_modules/zod" ]; then
+            echo "ERROR: zod is still present in Lambda package"
+            exit 1
+          fi
+
+          echo "pg and zod removed from Lambda package successfully"
+
+          # Create Lambda ZIP
           zip -rq ../lambda.zip .
 
           cd ..
